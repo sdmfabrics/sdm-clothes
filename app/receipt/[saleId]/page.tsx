@@ -103,6 +103,9 @@ export default function ReceiptPage() {
                     <div style={{ fontSize: '10px', color: '#555' }}>
                         Dogar Motors, Al-Jalil Garden
                     </div>
+                    <div style={{ fontSize: '10px', color: '#555' }}>
+                        Ph: 03001261218
+                    </div>
                     <div style={{ marginTop: '6px', fontSize: '11px' }}>
                         <strong>Receipt #:</strong> {sale._id.slice(-8).toUpperCase()}
                     </div>
@@ -153,7 +156,7 @@ export default function ReceiptPage() {
                 {/* Footer */}
                 <div style={{ textAlign: 'center', borderTop: '1px dashed #999', marginTop: '12px', paddingTop: '10px', fontSize: '11px', color: '#555' }}>
                     <div style={{ fontWeight: 'bold', color: '#000', marginBottom: '3px' }}>Thank you! Visit again.</div>
-                    <div>Returns within 24 hours with receipt</div>
+                    <div>Returns within 7 days with receipt</div>
                     <div style={{ marginTop: '8px', fontSize: '9px' }}>
                         — SDM Fabrics —
                     </div>

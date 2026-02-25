@@ -35,12 +35,14 @@ export default function POSPage() {
     const [submitting, setSubmitting] = useState(false);
     const [showMobileCart, setShowMobileCart] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+    const [online, setOnline] = useState(true);
 
     useEffect(() => {
         const load = async () => {
             try {
-                const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
-                const url = online ? '/api/inventory' : '/api/inventory/local';
+                const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+                setOnline(isOnline);
+                const url = isOnline ? '/api/inventory' : '/api/inventory/local';
                 const res = await fetch(url);
                 const data = await res.json();
                 setInventory(Array.isArray(data) ? data : []);
@@ -57,6 +59,17 @@ export default function POSPage() {
             }
         };
         load();
+
+        const updateStatus = () => {
+            if (typeof navigator === 'undefined') return;
+            setOnline(navigator.onLine);
+        };
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+        return () => {
+            window.removeEventListener('online', updateStatus);
+            window.removeEventListener('offline', updateStatus);
+        };
     }, []);
 
     const searchResults = useMemo(() => {
@@ -69,6 +82,10 @@ export default function POSPage() {
     const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
     function addToCart(item: InventoryItem) {
+        if (!online) {
+            setSaleError('POS is disabled while offline. Please connect to the internet.');
+            return;
+        }
         if (item.stockQty === 0) return;
         setCart(prev => {
             const exists = prev.find(c => c.inventoryId === item._id);
@@ -113,6 +130,10 @@ export default function POSPage() {
     async function completeSale() {
         if (cart.length === 0) {
             setSaleError('Cart is empty. Add items before completing sale.');
+            return;
+        }
+        if (!online) {
+            setSaleError('POS is disabled while offline. Please connect to the internet.');
             return;
         }
         setSubmitting(true);
@@ -163,7 +184,7 @@ export default function POSPage() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-[calc(100dvh-56px)] overflow-hidden">
 
             {/* ── LEFT: Search + Product List ── */}
             <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col border-r border-slate-100 bg-white overflow-hidden">
@@ -342,6 +363,13 @@ export default function POSPage() {
                         </div>
                     </div>
 
+                    {!online && (
+                        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-xs text-red-700">
+                            <AlertCircle size={14} className="flex-shrink-0" />
+                            POS is disabled while offline. Please connect to the internet to make sales.
+                        </div>
+                    )}
+
                     <div className="flex gap-3">
                         <button
                             onClick={() => cart.length > 0 ? setShowClearConfirm(true) : null}
@@ -351,7 +379,7 @@ export default function POSPage() {
                         </button>
                         <button
                             onClick={completeSale}
-                            disabled={submitting}
+                            disabled={submitting || !online}
                             className="btn-success flex-1 flex items-center justify-center gap-2"
                         >
                             {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
@@ -378,7 +406,7 @@ export default function POSPage() {
             {/* Mobile cart drawer */}
             {showMobileCart && (
                 <div className="lg:hidden fixed inset-0 z-50 bg-black/40 flex items-end">
-                    <div className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[75vh] p-4 space-y-4">
+                    <div className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[75vh] p-4 flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-bold text-slate-800">Current Bill</h2>
                             <button
@@ -395,7 +423,7 @@ export default function POSPage() {
                             </div>
                         )}
 
-                        <div className="flex-1 overflow-y-auto space-y-2">
+                        <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
                             {cart.map(item => (
                                 <div
                                     key={item.inventoryId}
@@ -452,6 +480,12 @@ export default function POSPage() {
                             </div>
                         </div>
 
+                        {!online && (
+                            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-[11px] text-red-700">
+                                <AlertCircle size={12} className="flex-shrink-0" />
+                                POS is offline. Connect to the internet to complete the sale.
+                            </div>
+                        )}
                         <div className="flex gap-3">
                             <button
                                 type="button"
@@ -463,7 +497,7 @@ export default function POSPage() {
                             <button
                                 type="button"
                                 onClick={completeSale}
-                                disabled={submitting}
+                                disabled={submitting || !online}
                                 className="btn-success flex-1 flex items-center justify-center gap-2"
                             >
                                 {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}

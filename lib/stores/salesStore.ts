@@ -162,75 +162,54 @@ export async function createSale(input: {
   }));
   const totalAmount = saleItems.reduce((sum, i) => sum + i.subtotal, 0);
 
-  // Try online first
-  try {
-    await connectDB();
-    await syncPendingSales();
+  // Online-only: require DB connection; no offline pending sales
+  await connectDB();
+  await syncPendingSales();
 
-    // Stock check (DB)
-    for (const item of saleItems) {
-      const inv = await Inventory.findOne({ fabricType: item.fabricType, colour: item.colour }).lean();
-      if (!inv) {
-        const e = new Error(`Item not found: ${item.fabricType} ${item.colour}`);
-        (e as any).status = 404;
-        throw e;
-      }
-      if (inv.stockQty < item.qty) {
-        const e = new Error(`Not enough stock for ${item.fabricType} ${item.colour}. Available: ${inv.stockQty}`);
-        (e as any).status = 400;
-        throw e;
-      }
+  // Stock check (DB)
+  for (const item of saleItems) {
+    const inv = await Inventory.findOne({ fabricType: item.fabricType, colour: item.colour }).lean();
+    if (!inv) {
+      const e = new Error(`Item not found: ${item.fabricType} ${item.colour}`);
+      (e as any).status = 404;
+      throw e;
     }
-
-    for (const item of saleItems) {
-      await Inventory.findOneAndUpdate(
-        { fabricType: item.fabricType, colour: item.colour },
-        { $inc: { stockQty: -item.qty } }
-      );
+    if (inv.stockQty < item.qty) {
+      const e = new Error(`Not enough stock for ${item.fabricType} ${item.colour}. Available: ${inv.stockQty}`);
+      (e as any).status = 400;
+      throw e;
     }
-
-    const saleId = crypto.randomUUID();
-    const saleDoc = await Sale.create({
-      saleId,
-      date: new Date(),
-      items: saleItems,
-      totalAmount,
-      synced: true,
-      paymentMethod,
-    });
-
-    // refresh cache
-    void getInventoryList();
-
-    const sale: SaleDTO = {
-      _id: String(saleDoc._id),
-      saleId,
-      date: saleDoc.date.toISOString(),
-      items: saleItems,
-      totalAmount,
-      synced: true,
-      paymentMethod,
-    };
-    return { sale, mode: 'online' };
-  } catch {
-    // Offline: use local inventory cache + pending file
-    await decrementStockFromCache(saleItems.map((i) => ({ fabricType: i.fabricType, colour: i.colour, qty: i.qty })));
-    const saleId = crypto.randomUUID();
-
-    const pending = await getPendingSales();
-    const localSale: SaleDTO = {
-      _id: saleId, // used as receipt URL id while offline
-      saleId,
-      date: new Date().toISOString(),
-      items: saleItems,
-      totalAmount,
-      synced: false,
-      paymentMethod,
-    };
-    pending.unshift(localSale);
-    await writeJsonFile(LOCAL_PATHS.pendingSales, pending);
-
-    return { sale: localSale, mode: 'offline' };
   }
+
+  for (const item of saleItems) {
+    await Inventory.findOneAndUpdate(
+      { fabricType: item.fabricType, colour: item.colour },
+      { $inc: { stockQty: -item.qty } }
+    );
+  }
+
+  const saleId = crypto.randomUUID();
+  const saleDoc = await Sale.create({
+    saleId,
+    date: new Date(),
+    items: saleItems,
+    totalAmount,
+    synced: true,
+    paymentMethod,
+  });
+
+  // refresh cache
+  void getInventoryList();
+
+  const sale: SaleDTO = {
+    _id: String(saleDoc._id),
+    saleId,
+    date: saleDoc.date.toISOString(),
+    items: saleItems,
+    totalAmount,
+    synced: true,
+    paymentMethod,
+  };
+  return { sale, mode: 'online' };
 }
 

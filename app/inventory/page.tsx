@@ -41,6 +41,7 @@ export default function InventoryPage() {
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
     const [restockItem, setRestockItem] = useState<InventoryItem | null>(null);
     const [restockQty, setRestockQty] = useState('');
+    const [restockMode, setRestockMode] = useState<'add' | 'reduce'>('add');
     const [editPrice, setEditPrice] = useState('');
     const [editAlert, setEditAlert] = useState('');
     const [toast, setToast] = useState<string | null>(null);
@@ -123,21 +124,31 @@ export default function InventoryPage() {
     function openRestock(item: InventoryItem) {
         setRestockItem(item);
         setRestockQty('');
+        setRestockMode('add');
     }
 
     async function saveRestock() {
         if (!restockItem || !restockQty || Number(restockQty) <= 0) return;
         setSaving(true);
         try {
+            const qty = Number(restockQty);
+            const delta = restockMode === 'add' ? qty : -qty;
+            if (restockMode === 'reduce' && qty > restockItem.stockQty) {
+                throw new Error('Cannot reduce more than current stock.');
+            }
             const res = await fetch(`/api/inventory/${restockItem._id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ addStock: Number(restockQty) }),
+                body: JSON.stringify({ addStock: delta }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to restock');
             setItems(prev => prev.map(i => i._id === restockItem._id ? data : i));
-            showToast(`Restocked: +${restockQty} pcs added`);
+            if (restockMode === 'add') {
+                showToast(`Restocked: +${restockQty} pcs added`);
+            } else {
+                showToast(`Adjusted: -${restockQty} pcs removed`);
+            }
             setRestockItem(null);
         } catch (err: any) {
             showToast(err.message, 'error');
@@ -326,27 +337,61 @@ export default function InventoryPage() {
                             <p className="text-sm font-semibold text-emerald-800">{restockItem.fabricType} — {restockItem.colour}</p>
                             <p className="text-xs text-emerald-600 mt-0.5">Current stock: <strong>{restockItem.stockQty} pcs</strong></p>
                         </div>
-                        <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block">Quantity to Add</label>
-                            <input
-                                type="number"
-                                min="1"
-                                className="input"
-                                placeholder="Enter qty…"
-                                value={restockQty}
-                                onChange={e => setRestockQty(e.target.value)}
-                                autoFocus
-                            />
+                        <div className="space-y-2">
+                            <div className="flex gap-2 text-xs font-semibold text-slate-600">
+                                <button
+                                    type="button"
+                                    onClick={() => setRestockMode('add')}
+                                    className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${
+                                        restockMode === 'add'
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-white text-slate-600 border-slate-200'
+                                    }`}
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRestockMode('reduce')}
+                                    className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${
+                                        restockMode === 'reduce'
+                                            ? 'bg-red-600 text-white border-red-600'
+                                            : 'bg-white text-slate-600 border-slate-200'
+                                    }`}
+                                >
+                                    Reduce
+                                </button>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                                    Quantity to {restockMode === 'add' ? 'Add' : 'Reduce'}
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className="input"
+                                    placeholder="Enter qty…"
+                                    value={restockQty}
+                                    onChange={e => setRestockQty(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            {restockQty && Number(restockQty) > 0 && (
+                                <p className="text-xs font-medium">
+                                    New stock will be:{' '}
+                                    <strong>
+                                        {restockMode === 'add'
+                                            ? restockItem.stockQty + Number(restockQty)
+                                            : restockItem.stockQty - Number(restockQty)}{' '}
+                                        pcs
+                                    </strong>
+                                </p>
+                            )}
                         </div>
-                        {restockQty && Number(restockQty) > 0 && (
-                            <p className="text-xs text-emerald-600 font-medium">
-                                New stock will be: <strong>{restockItem.stockQty + Number(restockQty)} pcs</strong>
-                            </p>
-                        )}
                         <div className="flex gap-3">
                             <button onClick={() => setRestockItem(null)} className="btn-secondary flex-1">Cancel</button>
                             <button onClick={saveRestock} disabled={saving} className="btn-success flex-1 flex items-center justify-center gap-2">
-                                {saving ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />} Add Stock
+                                {saving ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />} Save
                             </button>
                         </div>
                     </div>
