@@ -167,14 +167,16 @@ export async function createSale(input: {
   await syncPendingSales();
 
   // Stock check (DB)
+  // Cast to `any` to avoid Mongoose FlattenMaps<IInventory> typing issues while
+  // still getting a plain object back from .lean().
   for (const item of saleItems) {
-    const inv = await Inventory.findOne({ fabricType: item.fabricType, colour: item.colour }).lean();
+    const inv = (await Inventory.findOne({ fabricType: item.fabricType, colour: item.colour }).lean()) as any;
     if (!inv) {
       const e = new Error(`Item not found: ${item.fabricType} ${item.colour}`);
       (e as any).status = 404;
       throw e;
     }
-    if (inv.stockQty < item.qty) {
+    if ((inv.stockQty as number) < item.qty) {
       const e = new Error(`Not enough stock for ${item.fabricType} ${item.colour}. Available: ${inv.stockQty}`);
       (e as any).status = 400;
       throw e;

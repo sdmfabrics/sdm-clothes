@@ -6,8 +6,13 @@ import { createSale, getSalesList } from '@/lib/stores/salesStore';
 export async function GET(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { sales } = await getSalesList();
-    return NextResponse.json(sales);
+    try {
+        const { sales } = await getSalesList();
+        return NextResponse.json(sales);
+    } catch (err: any) {
+        const status = err?.status ?? 500;
+        return NextResponse.json({ error: err.message ?? 'Failed to load sales.' }, { status });
+    }
 }
 
 // POST /api/sales — complete a sale (save + reduce stock atomically)
