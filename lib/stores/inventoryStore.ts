@@ -26,13 +26,26 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function findExistingCaseInsensitive(fabricType: string, colour: string) {
+/** Plain object shape for a single inventory record (from .lean() or .toObject()) */
+type InventoryPlain = {
+  _id: unknown;
+  fabricType: string;
+  colour: string;
+  price: number;
+  stockQty: number;
+  lowStockAlert: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+async function findExistingCaseInsensitive(fabricType: string, colour: string): Promise<InventoryPlain | null> {
   const ft = fabricType.trim();
   const c = colour.trim();
-  return await Inventory.findOne({
+  const doc = await Inventory.findOne({
     fabricType: { $regex: `^${escapeRegex(ft)}$`, $options: 'i' },
     colour: { $regex: `^${escapeRegex(c)}$`, $options: 'i' },
   }).lean();
+  return doc as InventoryPlain | null;
 }
 
 export async function getInventoryList(): Promise<{ items: InventoryDTO[]; mode: 'online' | 'offline' }> {
@@ -263,17 +276,18 @@ export async function syncLocalInventory(): Promise<{ syncedCount: number; mode:
 
     try {
       // Avoid duplicates by fabric+colour
-      let dbItem = await findExistingCaseInsensitive(item.fabricType, item.colour);
+      let dbItem: InventoryPlain | null = await findExistingCaseInsensitive(item.fabricType, item.colour);
 
       if (!dbItem) {
         try {
-          dbItem = await Inventory.create({
+          const created = await Inventory.create({
             fabricType: item.fabricType.trim(),
             colour: item.colour.trim(),
             price: item.price,
             stockQty: item.stockQty,
             lowStockAlert: item.lowStockAlert,
-          }).then((doc) => doc.toObject());
+          });
+          dbItem = created.toObject() as InventoryPlain;
         } catch (e: any) {
           // If another record already exists (often due to casing), treat as synced by linking it.
           if (e?.code === 11000) {
