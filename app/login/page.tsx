@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Shirt, Loader2, AlertCircle } from 'lucide-react';
 
-export default function LoginPage() {
+// ─── Inner component uses useSearchParams ─────────────────────────────────────
+// Must be wrapped in <Suspense> at the page level to satisfy Next.js 14 App
+// Router's requirement that any component calling useSearchParams() is enclosed
+// in a Suspense boundary (otherwise the Vercel build fails).
+function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
@@ -46,7 +50,7 @@ export default function LoginPage() {
                     </div>
                     <div>
                         <h1 className="text-xl font-bold text-slate-800">SDM Fabrics</h1>
-                        <p className="text-xs text-slate-500">POS & Inventory</p>
+                        <p className="text-xs text-slate-500">POS &amp; Inventory</p>
                     </div>
                 </div>
                 <h2 className="text-lg font-semibold text-slate-800 mb-6">Sign in</h2>
@@ -94,5 +98,20 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+// ─── Page shell wraps LoginForm in Suspense ───────────────────────────────────
+// Next.js 14 App Router requires this so it can statically render the outer
+// shell while the inner component reads search params on the client.
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+                <Loader2 className="animate-spin text-sky-600" size={32} />
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }
