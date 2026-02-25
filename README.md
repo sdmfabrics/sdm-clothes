@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SDM Cloth House — Offline-First POS & Inventory
 
-## Getting Started
+Tech stack: Next.js 14 (App Router), TypeScript, Tailwind CSS, MongoDB Atlas (Mongoose) + local JSON files via Node.js `fs` for offline-first operation.
 
-First, run the development server:
+## Features
+
+- Dashboard: daily/monthly sales, pieces sold, inventory totals, low stock, top fabric, recent sales
+- POS billing: fast search by fabric/colour, cart, live total, stock-safe sale completion
+- Inventory: add/edit/restock/delete with Fabric+Colour uniqueness
+- Low stock alerts
+- Receipt printing (80mm thermal layout) with auto-print
+- Offline-first:
+  - Inventory is served from `local-data/inventory_cache.json` when MongoDB is unreachable
+  - Sales are saved to `local-data/pending_sales.json` while offline
+  - When internet returns, pending sales auto-sync to MongoDB (and inventory cache refreshes)
+
+## Run locally
+
+1. Install:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Create `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+MONGODB_URI="your mongodb atlas uri here"
+NEXTAUTH_SECRET="a-long-random-string-for-jwt-signing"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. First-time setup: open `http://localhost:3000/setup` and create the owner account (only when no users exist).
 
-## Learn More
+4. Build and start:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open: `http://localhost:3000` and sign in. Owner goes to Dashboard; cashiers go to POS.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Roles
 
-## Deploy on Vercel
+- **owner**: Dashboard, POS, Inventory, Alerts, Sales History, Users (full access, can delete products and manage users).
+- **cashier_pos**: POS and Receipt only.
+- **cashier_inventory**: POS and Inventory (restock & edit; cannot delete products or access Dashboard/Users).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Offline data files
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+These files are created automatically:
+
+- `local-data/inventory_cache.json`
+- `local-data/pending_sales.json`
+- `local-data/restock_history.json`
+
