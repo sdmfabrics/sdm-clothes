@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "start": "next start"
+        "start": "next start",
+        "postinstall": "node -e \"const fs=require('fs'),path=require('path');const p=path.join(process.cwd(),'node_modules','bcrypt');try{fs.rmSync(p,{recursive:true,force:true});console.log('Removed native bcrypt (replaced by bcryptjs)')}catch(e){console.log('bcrypt not present, OK')}\""
     },
     "dependencies": {
         "bcryptjs": "2.4.3",
