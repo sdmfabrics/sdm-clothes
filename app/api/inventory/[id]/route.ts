@@ -4,7 +4,8 @@ import { deleteInventoryItem, updateInventoryItem } from '@/lib/stores/inventory
 import { LOCAL_PATHS, readJsonFile, writeJsonFile } from '@/lib/localData';
 
 // PATCH /api/inventory/[id] — edit price / lowStockAlert / restock (owner + cashier_inventory only)
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const role = token.role as string;
@@ -14,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     try {
         const body = await req.json();
         const { price, lowStockAlert, addStock } = body;
-        const { item } = await updateInventoryItem(params.id, {
+        const { item } = await updateInventoryItem(id, {
             price: price !== undefined ? Number(price) : undefined,
             lowStockAlert: lowStockAlert !== undefined ? Number(lowStockAlert) : undefined,
             addStock: addStock !== undefined ? Number(addStock) : undefined,
@@ -42,14 +43,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/inventory/[id] — owner only
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (token.role !== 'owner') {
         return NextResponse.json({ error: 'Forbidden. Only owner can delete products.' }, { status: 403 });
     }
     try {
-        await deleteInventoryItem(params.id);
+        await deleteInventoryItem(id);
         return NextResponse.json({ success: true });
     } catch (err: any) {
         const status = err?.status ?? 500;
