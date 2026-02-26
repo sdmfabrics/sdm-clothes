@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
                     await connectDB();
                     const user = await User.findOne({ email: credentials.email.trim().toLowerCase() }).lean();
                     if (!user || !user.password) return null;
-                    const ok = await bcryptjs.compare(credentials.password, user.password);
+                    const ok = await bcrypt.compare(credentials.password, user.password);
                     if (!ok) return null;
                     return {
                         id: String(user._id),
