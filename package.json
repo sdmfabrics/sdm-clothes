@@ -16,6 +16,9 @@
         "react": "^18",
         "react-dom": "^18"
     },
+    "overrides": {
+        "bcrypt": "npm:bcryptjs@2.4.3"
+    },
     "devDependencies": {
         "@types/bcryptjs": "2.4.6",
         "@types/node": "^20",
