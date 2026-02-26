@@ -1,0 +1,28 @@
+services:
+  # Web Service
+  - type: web
+    name: sdm-clothes-pos
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        value: https://sdm-clothes-pos.onrender.com
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+  # Static Asset Service (if needed for large files)
+  - type: web
+    name: sdm-clothes-assets
+    env: static
+    buildCommand: echo "No build needed"
+    staticPublishPath: ./public
+    envVars:
+      - key: NODE_ENV
+        value: production
