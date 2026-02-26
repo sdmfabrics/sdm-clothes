@@ -88,28 +88,28 @@ export default function ReceiptPage() {
                     maxWidth: '320px',
                     padding: '16px',
                     fontFamily: "'Courier New', monospace",
-                    fontSize: '12px',
+                    fontSize: '14px',
                     color: '#000',
                 }}
             >
                 {/* Header */}
                 <div style={{ textAlign: 'center', borderBottom: '1px dashed #999', paddingBottom: '10px', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px' }}>
                         SDM FABRICS
                     </div>
-                    <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
+                    <div style={{ fontSize: '14px', color: '#555', marginTop: '2px' }}>
                         Unstitched Fabric Suits
                     </div>
-                    <div style={{ fontSize: '10px', color: '#555' }}>
+                    <div style={{ fontSize: '14px', color: '#555' }}>
                         Dogar Motors, Al-Jalil Garden
                     </div>
-                    <div style={{ fontSize: '10px', color: '#555' }}>
+                    <div style={{ fontSize: '14px', color: '#555' }}>
                         Ph: 03001261218
                     </div>
-                    <div style={{ marginTop: '6px', fontSize: '11px' }}>
+                    <div style={{ marginTop: '6px', fontSize: '14px' }}>
                         <strong>Receipt #:</strong> {sale._id.slice(-8).toUpperCase()}
                     </div>
-                    <div style={{ fontSize: '11px' }}>
+                    <div style={{ fontSize: '14px' }}>
                         <strong>Date:</strong>{' '}
                         {dateObj.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                         {'  '}
@@ -120,7 +120,7 @@ export default function ReceiptPage() {
                 {/* Items */}
                 <>
                     {/* Column Headers */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid #ddd', paddingBottom: '4px', marginBottom: '6px', fontSize: '11px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid #ddd', paddingBottom: '4px', marginBottom: '6px', fontSize: '14px' }}>
                         <span style={{ flex: 3 }}>ITEM</span>
                         <span style={{ flex: 1, textAlign: 'center' }}>QTY</span>
                         <span style={{ flex: 1.5, textAlign: 'right' }}>PRICE</span>
@@ -129,10 +129,10 @@ export default function ReceiptPage() {
 
                     {/* Rows */}
                     {sale.items.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '11px', alignItems: 'flex-start' }}>
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px', alignItems: 'flex-start' }}>
                             <span style={{ flex: 3, lineHeight: '1.3' }}>
                                 {item.fabricType}<br />
-                                <span style={{ color: '#555', fontSize: '10px' }}>{item.colour}</span>
+                                <span style={{ color: '#555', fontSize: '14px' }}>{item.colour}</span>
                             </span>
                             <span style={{ flex: 1, textAlign: 'center' }}>{item.qty}</span>
                             <span style={{ flex: 1.5, textAlign: 'right' }}>{item.price.toLocaleString()}</span>
@@ -142,11 +142,11 @@ export default function ReceiptPage() {
 
                     {/* Total */}
                     <div style={{ borderTop: '1px dashed #999', marginTop: '8px', paddingTop: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
                             <span>TOTAL</span>
                             <span>Rs. {sale.totalAmount.toLocaleString()}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#555', marginTop: '2px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#555', marginTop: '2px' }}>
                             <span>Items: {sale.items.reduce((s, i) => s + i.qty, 0)} pcs</span>
                             <span>{(sale.paymentMethod || 'cash') === 'card' ? 'Card' : 'Cash'}</span>
                         </div>
@@ -154,10 +154,10 @@ export default function ReceiptPage() {
                 </>
 
                 {/* Footer */}
-                <div style={{ textAlign: 'center', borderTop: '1px dashed #999', marginTop: '12px', paddingTop: '10px', fontSize: '11px', color: '#555' }}>
+                <div style={{ textAlign: 'center', borderTop: '1px dashed #999', marginTop: '12px', paddingTop: '10px', fontSize: '14px', color: '#555' }}>
                     <div style={{ fontWeight: 'bold', color: '#000', marginBottom: '3px' }}>Thank you! Visit again.</div>
                     <div>Returns within 7 days with receipt</div>
-                    <div style={{ marginTop: '8px', fontSize: '9px' }}>
+                    <div style={{ marginTop: '8px', fontSize: '14px' }}>
                         — SDM Fabrics —
                     </div>
                 </div>
