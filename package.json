@@ -5,20 +5,16 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "start": "next start",
-        "postinstall": "node -e \"const fs=require('fs'),path=require('path');const p=path.join(process.cwd(),'node_modules','bcrypt');try{fs.rmSync(p,{recursive:true,force:true});console.log('Removed native bcrypt (replaced by bcryptjs)')}catch(e){console.log('bcrypt not present, OK')}\""
+        "start": "next start"
     },
     "dependencies": {
-        "bcryptjs": "2.4.3",
+        "bcryptjs": "^2.4.3",
         "lucide-react": "^0.376.0",
         "mongoose": "^8.23.0",
         "next": "^16.1.6",
         "next-auth": "^4.24.13",
         "react": "^18",
         "react-dom": "^18"
-    },
-    "overrides": {
-        "bcrypt": "npm:bcryptjs@2.4.3"
     },
     "devDependencies": {
         "@types/bcryptjs": "2.4.6",
