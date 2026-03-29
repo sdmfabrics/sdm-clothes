@@ -483,31 +483,11 @@ export default function POSPage() {
                             ))}
                         </div>
 
-                        {/* Discount row — mobile, shown when subtotal >= 10000 */}
-                        {total >= 10000 && (
-                            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">Discount (Rs.)</span>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={total}
-                                    value={discount}
-                                    onChange={e => setDiscount(e.target.value)}
-                                    placeholder="e.g. 500"
-                                    className="flex-1 text-right text-sm font-bold border-0 bg-transparent outline-none text-amber-800 placeholder-amber-300"
-                                />
-                            </div>
-                        )}
-
                         <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
                             <div>
-                                <span className="block text-xs font-semibold text-slate-500">Subtotal</span>
-                                <span className="block text-xs text-slate-400">Rs. {total.toLocaleString()}</span>
-                                {discountValue > 0 && (
-                                    <span className="block text-xs text-red-500 font-semibold">- Rs. {discountValue.toLocaleString()} off</span>
-                                )}
+                                <span className="block text-xs font-semibold text-slate-500">Total</span>
                                 <span className="text-xl font-extrabold text-sky-600">
-                                    Rs. {finalTotal.toLocaleString()}
+                                    Rs. {total.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex flex-col items-end gap-1">
