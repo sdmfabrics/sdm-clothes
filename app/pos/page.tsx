@@ -21,6 +21,7 @@ interface CartItem {
     colour: string;
     price: number;
     qty: number;
+    discount: number;
     maxQty: number;
 }
 
@@ -79,7 +80,7 @@ export default function POSPage() {
         );
     }, [search, inventory]);
 
-    const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const total = cart.reduce((s, i) => s + Math.max(0, i.price * i.qty - i.discount), 0);
 
     function addToCart(item: InventoryItem) {
         if (!online) {
@@ -99,6 +100,7 @@ export default function POSPage() {
                 colour: item.colour,
                 price: item.price,
                 qty: 1,
+                discount: 0,
                 maxQty: item.stockQty,
             }];
         });
@@ -117,6 +119,11 @@ export default function POSPage() {
 
     function removeFromCart(id: string) {
         setCart(prev => prev.filter(c => c.inventoryId !== id));
+    }
+
+    function updateDiscount(id: string, value: string) {
+        const num = Math.max(0, Number(value) || 0);
+        setCart(prev => prev.map(c => c.inventoryId === id ? { ...c, discount: num } : c));
     }
 
     function clearBill() {
@@ -148,6 +155,7 @@ export default function POSPage() {
                         colour: c.colour,
                         price: c.price,
                         qty: c.qty,
+                        discount: c.discount,
                     })),
                     paymentMethod,
                 }),
@@ -275,40 +283,67 @@ export default function POSPage() {
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {cart.map(item => (
-                                <div key={item.inventoryId} className="bg-white rounded-xl border border-slate-100 px-4 py-3 flex items-center gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-800 text-sm truncate">{item.fabricType}</p>
-                                        <p className="text-xs text-slate-400">{item.colour} · Rs. {item.price.toLocaleString()} each</p>
+                            {cart.map(item => {
+                                const itemGross = item.price * item.qty;
+                                const itemNet = Math.max(0, itemGross - item.discount);
+                                return (
+                                <div key={item.inventoryId} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 space-y-2">
+                                    {/* Top row: name + delete */}
+                                    <div className="flex items-start gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-slate-800 text-sm truncate">{item.fabricType}</p>
+                                            <p className="text-xs text-slate-400">{item.colour} · Rs. {item.price.toLocaleString()} each</p>
+                                        </div>
+                                        <button
+                                            onClick={() => removeFromCart(item.inventoryId)}
+                                            className="text-slate-300 hover:text-red-500 transition p-1 flex-shrink-0"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
-                                    {/* Qty controls */}
+                                    {/* Bottom row: qty controls + discount + net */}
                                     <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => item.qty === 1 ? removeFromCart(item.inventoryId) : updateQty(item.inventoryId, -1)}
-                                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition"
-                                        >
-                                            <Minus size={13} />
-                                        </button>
-                                        <span className="w-8 text-center font-bold text-slate-800 text-sm">{item.qty}</span>
-                                        <button
-                                            onClick={() => updateQty(item.inventoryId, 1)}
-                                            disabled={item.qty >= item.maxQty}
-                                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-sky-100 hover:text-sky-600 flex items-center justify-center transition disabled:opacity-40"
-                                        >
-                                            <Plus size={13} />
-                                        </button>
+                                        {/* Qty */}
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => item.qty === 1 ? removeFromCart(item.inventoryId) : updateQty(item.inventoryId, -1)}
+                                                className="w-6 h-6 rounded-md bg-slate-100 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition"
+                                            >
+                                                <Minus size={12} />
+                                            </button>
+                                            <span className="w-6 text-center font-bold text-slate-800 text-xs">{item.qty}</span>
+                                            <button
+                                                onClick={() => updateQty(item.inventoryId, 1)}
+                                                disabled={item.qty >= item.maxQty}
+                                                className="w-6 h-6 rounded-md bg-slate-100 hover:bg-sky-100 hover:text-sky-600 flex items-center justify-center transition disabled:opacity-40"
+                                            >
+                                                <Plus size={12} />
+                                            </button>
+                                        </div>
+                                        {/* Discount */}
+                                        <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex-1">
+                                            <span className="text-[10px] text-amber-600 font-semibold whitespace-nowrap">Disc Rs.</span>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={itemGross}
+                                                value={item.discount === 0 ? '' : item.discount}
+                                                onChange={e => updateDiscount(item.inventoryId, e.target.value)}
+                                                placeholder="0"
+                                                className="w-full text-right text-xs font-bold border-0 bg-transparent outline-none text-amber-800 placeholder-amber-300"
+                                            />
+                                        </div>
+                                        {/* Net */}
+                                        <div className="text-right flex-shrink-0">
+                                            {item.discount > 0 && (
+                                                <p className="text-[10px] text-slate-400 line-through">Rs. {itemGross.toLocaleString()}</p>
+                                            )}
+                                            <p className="font-bold text-slate-800 text-sm">Rs. {itemNet.toLocaleString()}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right w-20">
-                                        <p className="font-bold text-slate-800 text-sm">Rs. {(item.price * item.qty).toLocaleString()}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => removeFromCart(item.inventoryId)}
-                                        className="text-slate-300 hover:text-red-500 transition p-1"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -323,17 +358,21 @@ export default function POSPage() {
 
                     {/* Line items summary */}
                     <div className="space-y-1">
-                        {cart.map(item => (
-                            <div key={item.inventoryId} className="flex justify-between text-xs text-slate-500">
-                                <span>{item.fabricType} {item.colour} × {item.qty}</span>
-                                <span>Rs. {(item.price * item.qty).toLocaleString()}</span>
-                            </div>
-                        ))}
+                        {cart.map(item => {
+                            const itemGross = item.price * item.qty;
+                            const itemNet = Math.max(0, itemGross - item.discount);
+                            return (
+                                <div key={item.inventoryId} className="flex justify-between text-xs text-slate-500">
+                                    <span>{item.fabricType} {item.colour} ×{item.qty}{item.discount > 0 ? ` (-${item.discount.toLocaleString()})` : ''}</span>
+                                    <span className={item.discount > 0 ? 'text-sky-600 font-semibold' : ''}>Rs. {itemNet.toLocaleString()}</span>
+                                </div>
+                            );
+                        })}
                     </div>
 
                     <div className="border-t border-slate-100 pt-3 flex flex-col gap-3">
                         <div className="flex justify-between items-center">
-                            <span className="font-bold text-slate-700">Total</span>
+                            <span className="font-bold text-slate-700">TOTAL</span>
                             <span className="text-2xl font-extrabold text-sky-600">Rs. {total.toLocaleString()}</span>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
@@ -444,11 +483,31 @@ export default function POSPage() {
                             ))}
                         </div>
 
+                        {/* Discount row — mobile, shown when subtotal >= 10000 */}
+                        {total >= 10000 && (
+                            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">Discount (Rs.)</span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={total}
+                                    value={discount}
+                                    onChange={e => setDiscount(e.target.value)}
+                                    placeholder="e.g. 500"
+                                    className="flex-1 text-right text-sm font-bold border-0 bg-transparent outline-none text-amber-800 placeholder-amber-300"
+                                />
+                            </div>
+                        )}
+
                         <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
                             <div>
-                                <span className="block text-xs font-semibold text-slate-500">Total</span>
+                                <span className="block text-xs font-semibold text-slate-500">Subtotal</span>
+                                <span className="block text-xs text-slate-400">Rs. {total.toLocaleString()}</span>
+                                {discountValue > 0 && (
+                                    <span className="block text-xs text-red-500 font-semibold">- Rs. {discountValue.toLocaleString()} off</span>
+                                )}
                                 <span className="text-xl font-extrabold text-sky-600">
-                                    Rs. {total.toLocaleString()}
+                                    Rs. {finalTotal.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex flex-col items-end gap-1">

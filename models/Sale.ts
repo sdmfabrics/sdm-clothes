@@ -5,6 +5,7 @@ export interface ISaleItem {
     colour: string;
     price: number;
     qty: number;
+    discount: number;
     subtotal: number;
 }
 
@@ -23,6 +24,7 @@ const SaleItemSchema = new Schema<ISaleItem>(
         colour: { type: String, required: true },
         price: { type: Number, required: true },
         qty: { type: Number, required: true },
+        discount: { type: Number, required: true, default: 0, min: 0 },
         subtotal: { type: Number, required: true },
     },
     { _id: false }

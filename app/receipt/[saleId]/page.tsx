@@ -17,6 +17,8 @@ interface Sale {
     date: string;
     items: SaleItem[];
     totalAmount: number;
+    discount?: number;
+    finalAmount?: number;
     paymentMethod?: 'cash' | 'card';
 }
 
@@ -140,12 +142,28 @@ export default function ReceiptPage() {
                         </div>
                     ))}
 
-                    {/* Total */}
+                    {/* Total section */}
                     <div style={{ borderTop: '1px dashed #999', marginTop: '8px', paddingTop: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-                            <span>TOTAL</span>
+                        {/* Subtotal row — always shown */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#555' }}>
+                            <span>SUBTOTAL</span>
                             <span>Rs. {sale.totalAmount.toLocaleString()}</span>
                         </div>
+
+                        {/* Discount row — only if discount > 0 */}
+                        {(sale.discount ?? 0) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#c0392b', marginTop: '3px' }}>
+                                <span>DISCOUNT</span>
+                                <span>- Rs. {(sale.discount ?? 0).toLocaleString()}</span>
+                            </div>
+                        )}
+
+                        {/* Net Total */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', borderTop: '1px solid #ddd', marginTop: '6px', paddingTop: '6px' }}>
+                            <span>{(sale.discount ?? 0) > 0 ? 'NET TOTAL' : 'TOTAL'}</span>
+                            <span>Rs. {(sale.finalAmount ?? sale.totalAmount).toLocaleString()}</span>
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#555', marginTop: '2px' }}>
                             <span>Items: {sale.items.reduce((s, i) => s + i.qty, 0)} pcs</span>
                             <span>{(sale.paymentMethod || 'cash') === 'card' ? 'Card' : 'Cash'}</span>

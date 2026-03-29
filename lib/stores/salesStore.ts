@@ -10,6 +10,7 @@ export type SaleItemDTO = {
   colour: string;
   price: number;
   qty: number;
+  discount: number;
   subtotal: number;
 };
 
@@ -100,7 +101,7 @@ export async function getSalesList(): Promise<{ sales: SaleDTO[]; mode: 'online'
       _id: String(s._id),
       saleId: s.saleId,
       date: new Date(s.date).toISOString(),
-      items: s.items,
+      items: s.items.map((i: any) => ({ ...i, discount: i.discount ?? 0 })),
       totalAmount: s.totalAmount,
       synced: s.synced ?? true,
       paymentMethod: (s.paymentMethod as 'cash' | 'card') || 'cash',
@@ -129,7 +130,7 @@ export async function getSaleByAnyId(id: string): Promise<{ sale: SaleDTO | null
       _id: String(doc._id),
       saleId: doc.saleId,
       date: new Date(doc.date).toISOString(),
-      items: doc.items,
+      items: doc.items.map((i: any) => ({ ...i, discount: i.discount ?? 0 })),
       totalAmount: doc.totalAmount,
       synced: doc.synced ?? true,
       paymentMethod: (doc as any).paymentMethod || 'cash',
@@ -143,7 +144,7 @@ export async function getSaleByAnyId(id: string): Promise<{ sale: SaleDTO | null
 }
 
 export async function createSale(input: {
-  items: Array<{ fabricType: string; colour: string; price: number; qty: number }>;
+  items: Array<{ fabricType: string; colour: string; price: number; qty: number; discount?: number }>;
   paymentMethod?: 'cash' | 'card';
 }): Promise<{ sale: SaleDTO; mode: 'online' | 'offline' }> {
   const paymentMethod: 'cash' | 'card' = input.paymentMethod === 'card' ? 'card' : 'cash';
@@ -153,13 +154,18 @@ export async function createSale(input: {
     throw e;
   }
 
-  const saleItems: SaleItemDTO[] = input.items.map((i) => ({
-    fabricType: String(i.fabricType).trim(),
-    colour: String(i.colour).trim(),
-    price: Number(i.price),
-    qty: Number(i.qty),
-    subtotal: Number(i.qty) * Number(i.price),
-  }));
+  const saleItems: SaleItemDTO[] = input.items.map((i) => {
+    const itemDiscount = Math.max(0, Number(i.discount ?? 0));
+    const subtotal = Math.max(0, Number(i.qty) * Number(i.price) - itemDiscount);
+    return {
+      fabricType: String(i.fabricType).trim(),
+      colour: String(i.colour).trim(),
+      price: Number(i.price),
+      qty: Number(i.qty),
+      discount: itemDiscount,
+      subtotal,
+    };
+  });
   const totalAmount = saleItems.reduce((sum, i) => sum + i.subtotal, 0);
 
   // Online-only: require DB connection; no offline pending sales
@@ -167,8 +173,6 @@ export async function createSale(input: {
   await syncPendingSales();
 
   // Stock check (DB)
-  // Cast to `any` to avoid Mongoose FlattenMaps<IInventory> typing issues while
-  // still getting a plain object back from .lean().
   for (const item of saleItems) {
     const inv = (await Inventory.findOne({ fabricType: item.fabricType, colour: item.colour }).lean()) as any;
     if (!inv) {
@@ -215,3 +219,123 @@ export async function createSale(input: {
   return { sale, mode: 'online' };
 }
 
+export async function updateSale(
+  id: string,
+  newItems: Array<{ fabricType: string; colour: string; price: number; qty: number }>
+): Promise<{ sale: SaleDTO; mode: 'online' | 'offline' }> {
+  if (!newItems || newItems.length === 0) {
+    const e = new Error('Sale must have at least one item.');
+    (e as any).status = 400;
+    throw e;
+  }
+  await connectDB();
+  const existingDoc = await Sale.findById(id).lean() as any;
+  if (!existingDoc) {
+    const e = new Error('Sale not found');
+    (e as any).status = 404;
+    throw e;
+  }
+  const oldItems: SaleItemDTO[] = existingDoc.items;
+  const newSaleItems: SaleItemDTO[] = newItems.map((i) => {
+    const itemDiscount = Math.max(0, Number((i as any).discount ?? 0));
+    const subtotal = Math.max(0, Number(i.qty) * Number(i.price) - itemDiscount);
+    return {
+      fabricType: String(i.fabricType).trim(),
+      colour: String(i.colour).trim(),
+      price: Number(i.price),
+      qty: Number(i.qty),
+      discount: itemDiscount,
+      subtotal,
+    };
+  });
+
+  const getKey = (f: string, c: string) => `${f.trim().toLowerCase()}__${c.trim().toLowerCase()}`;
+
+  // Build diff: positive delta = consume more stock, negative = restore stock
+  const diff = new Map<string, { fabricType: string; colour: string; delta: number }>();
+  for (const item of oldItems) {
+    const k = getKey(item.fabricType, item.colour);
+    const cur = diff.get(k) ?? { fabricType: item.fabricType, colour: item.colour, delta: 0 };
+    cur.delta -= item.qty; // old items restore stock
+    diff.set(k, cur);
+  }
+  for (const item of newSaleItems) {
+    const k = getKey(item.fabricType, item.colour);
+    const cur = diff.get(k) ?? { fabricType: item.fabricType, colour: item.colour, delta: 0 };
+    cur.delta += item.qty; // new items consume stock
+    diff.set(k, cur);
+  }
+
+  // Validate stock where more is being consumed
+  for (const { fabricType, colour, delta } of diff.values()) {
+    if (delta > 0) {
+      const inv = await Inventory.findOne({ fabricType, colour }).lean() as any;
+      if (!inv) {
+        const e = new Error(`Item not found in inventory: ${fabricType} ${colour}`);
+        (e as any).status = 404;
+        throw e;
+      }
+      if ((inv.stockQty as number) < delta) {
+        const e = new Error(`Not enough stock for ${fabricType} ${colour}. Available: ${inv.stockQty}`);
+        (e as any).status = 400;
+        throw e;
+      }
+    }
+  }
+
+  // Apply stock adjustments
+  for (const { fabricType, colour, delta } of diff.values()) {
+    if (delta !== 0) {
+      await Inventory.findOneAndUpdate(
+        { fabricType, colour },
+        { $inc: { stockQty: -delta } }
+      );
+    }
+  }
+
+  const newTotal = newSaleItems.reduce((sum, i) => sum + i.subtotal, 0);
+  const updated = await Sale.findByIdAndUpdate(
+    id,
+    { $set: { items: newSaleItems, totalAmount: newTotal } },
+    { new: true, runValidators: true }
+  ).lean() as any;
+
+  if (!updated) {
+    const e = new Error('Sale not found after update');
+    (e as any).status = 404;
+    throw e;
+  }
+
+  void getInventoryList();
+
+  const sale: SaleDTO = {
+    _id: String(updated._id),
+    saleId: updated.saleId,
+    date: new Date(updated.date).toISOString(),
+    items: updated.items.map((i: any) => ({ ...i, discount: i.discount ?? 0 })),
+    totalAmount: updated.totalAmount,
+    synced: updated.synced ?? true,
+    paymentMethod: (updated as any).paymentMethod || 'cash',
+  };
+  return { sale, mode: 'online' };
+}
+
+export async function deleteSale(id: string): Promise<{ mode: 'online' | 'offline' }> {
+  await connectDB();
+  const existingDoc = await Sale.findById(id).lean() as any;
+  if (!existingDoc) {
+    const e = new Error('Sale not found');
+    (e as any).status = 404;
+    throw e;
+  }
+  // Restore stock for all items in the deleted sale
+  for (const item of existingDoc.items as SaleItemDTO[]) {
+    await Inventory.findOneAndUpdate(
+      { fabricType: item.fabricType, colour: item.colour },
+      { $inc: { stockQty: item.qty } }
+    );
+  }
+  await Sale.findByIdAndDelete(id);
+  void getInventoryList();
+  return { mode: 'online' };
+}
